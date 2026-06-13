@@ -403,6 +403,14 @@ body {
         </div>
         <span class="mode-card-arrow">›</span>
       </div>
+      <div class="mode-card" onclick="showCategory('review')">
+        <div class="mode-card-icon" style="background:var(--primary-light);color:var(--primary)">◎</div>
+        <div class="mode-card-body">
+          <div class="mode-card-title">背题模式</div>
+          <div class="mode-card-desc">浏览全部题目，答案直接显示</div>
+        </div>
+        <span class="mode-card-arrow">›</span>
+      </div>
     </div>
 
     <div class="section-title">其他</div>
@@ -577,7 +585,7 @@ function showCategory(mode) {
 
   const screen = document.getElementById('catScreen');
   const content = document.getElementById('catContent');
-  document.getElementById('catTitle').textContent = mode === 'practice' ? '顺序练习' : '随机练习';
+  document.getElementById('catTitle').textContent = mode === 'practice' ? '顺序练习' : (mode === 'review' ? '背题模式' : '随机练习');
   document.getElementById('homeScreen').classList.add('hidden');
   screen.classList.remove('hidden');
 
@@ -670,7 +678,7 @@ function showQuiz() {
 
   const isExam = state.mode === 'exam';
   document.getElementById('quizTitle').textContent =
-    isExam ? '📝 模拟考试' : (state.mode === 'random' ? '🔀 随机练习' : '📖 顺序练习');
+    isExam ? '📝 模拟考试' : (state.mode === 'random' ? '🔀 随机练习' : (state.mode === 'review' ? '◎ 背题模式' : '📖 顺序练习'));
 
   renderQuestion();
 }
@@ -691,7 +699,11 @@ function renderQuestion() {
   let savedAns = state.answers[q.id] || [];
   let isLocked = false;
 
-  if (isMulti) {
+  // Review mode: immediately show all correct answers
+  if (state.mode === 'review') {
+    savedAns = q.answer;
+    isLocked = true;
+  } else if (isMulti) {
     // Multi: locked only after explicit submit
     isLocked = state.submitted.has(q.id);
   } else {
