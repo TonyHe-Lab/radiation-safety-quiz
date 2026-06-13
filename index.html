@@ -551,6 +551,20 @@ function saveProgress(p) {
 }
 let progress = loadProgress();
 
+// Position persistence for resume
+function savePosition(catKey, idx) {
+  try {
+    localStorage.setItem('radExam_position', JSON.stringify({ catKey, idx, time: Date.now() }));
+  } catch(e) {}
+}
+function loadPosition() {
+  try { return JSON.parse(localStorage.getItem('radExam_position') || 'null'); }
+  catch(e) { return null; }
+}
+function clearPosition() {
+  try { localStorage.removeItem('radExam_position'); } catch(e) {}
+}
+
 function shuffle(arr) {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {
@@ -625,8 +639,17 @@ function startPractice(catKey) {
   qs = QUESTIONS.filter(filters[catKey] || (q=>true));
   if (state.mode === 'random') qs = shuffle(qs);
 
+  // Check for saved position to resume
+  let startIdx = 0;
+  const saved = loadPosition();
+  if (saved && saved.catKey === catKey && saved.idx > 0 && saved.idx < qs.length) {
+    const resume = confirm(`检测到上次浏览记录，是否跳转到第 ${saved.idx + 1} 题继续？`);
+    if (resume) startIdx = saved.idx;
+    else clearPosition();
+  }
+
   state.questions = qs;
-  state.currentIdx = 0;
+  state.currentIdx = startIdx;
   state.answers = {};
   state.submitted = new Set();
   state.startTime = Date.now();
@@ -688,6 +711,20 @@ function renderQuestion() {
   const total = state.questions.length;
   const idx = state.currentIdx;
   const isExam = state.mode === 'exam';
+
+  // Save position for resume (not in exam mode)
+  if (!isExam && state.mode !== null) {
+    // Infer catKey from question data
+    const firstQ = state.questions[0];
+    let catKey = 'all';
+    if (firstQ.part === 1 && firstQ.type === 'single') catKey = 'p1s';
+    else if (firstQ.part === 1 && firstQ.type === 'multi') catKey = 'p1m';
+    else if (firstQ.part === 1) catKey = 'p1a';
+    else if (firstQ.part === 2 && firstQ.type === 'single') catKey = 'p2s';
+    else if (firstQ.part === 2 && firstQ.type === 'multi') catKey = 'p2m';
+    else if (firstQ.part === 2) catKey = 'p2a';
+    savePosition(catKey, idx);
+  }
 
   document.getElementById('quizSubtitle').textContent = `第 ${idx+1} / ${total} 题`;
   document.getElementById('quizProgress').style.width = ((idx+1)/total*100) + '%';
@@ -954,6 +991,7 @@ function resetProgress() {
   if (confirm('确定要清除所有练习记录吗？此操作不可撤销。')) {
     progress = {};
     saveProgress(progress);
+    clearPosition();
     updateHomeStats();
   }
 }
